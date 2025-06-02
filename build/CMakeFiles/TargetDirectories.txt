@@ -1,3 +1,0 @@
-/home/rudraneel.s/raw-udp-ns3/build/CMakeFiles/raw-app.dir
-/home/rudraneel.s/raw-udp-ns3/build/CMakeFiles/edit_cache.dir
-/home/rudraneel.s/raw-udp-ns3/build/CMakeFiles/rebuild_cache.dir
