@@ -26,7 +26,7 @@ set(SOURCES
     rawudpnet.cc    
 )
 
-add_executable(raw-app ${SOURCES})
+add_executable(rawudpnet ${SOURCES})
 
-target_link_libraries(raw-app ${NS3_LIBS})
+target_link_libraries(rawudpnet ${NS3_LIBS})
 add_definitions(-DNS3_LOG_ENABLE)

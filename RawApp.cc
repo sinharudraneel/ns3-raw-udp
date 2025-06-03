@@ -46,7 +46,7 @@ void RawApp::StartApplication()
     m_running = true;
     // Create Raw Socket
     m_socket = Socket::CreateSocket(GetNode(), PacketSocketFactory::GetTypeId());
-    Ptr<NetDevice> device = GetNode()->GetDevice(1);
+    Ptr<NetDevice> device = GetNode()->GetDevice(1); // CSMA device resides at index 1 instead of 0, 0 occupied by Bridge Device (why?)
    
     PacketSocketAddress localAddress;
     localAddress.SetSingleDevice(device->GetIfIndex());
