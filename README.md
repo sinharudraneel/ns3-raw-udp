@@ -26,6 +26,7 @@ This project is configured to run on a linux system. The system it was programme
 1. A C++ compiler such as g++ or clang, that supports the C++17 standard
 2. CMake, version 13.0 or higher
 3. make
+
 If not, please install these on your system before you can proceed.
 ### NS3 Installation
 This project, as mentioned before, is a simulation run on ns3, a discrete-event network simulator. There are a couple of installation options:
@@ -76,40 +77,14 @@ Here are your options for the command line
 
 
 Program Options:
-    --send04:   bool: send packets from n0 to n4 [true]
-    --send40:   bool: send packets from n4 to n0 [false]
-    --send05:   bool: send packets from n0 to n5 [false]
-    --send50:   bool: send packets from n5 to n0 [false]
-    --send14:   bool: send packets from n1 to n4 [false]
-    --send41:   bool: send packets from n4 to n1 [false]
-    --send15:   bool: send packets from n1 to n5 [false]
-    --send51:   bool: send packets from n5 to n1 [false]
-    --start04:  double: start time for n0 to n4 (s) [1]
-    --start40:  double: start time for n4 to n0 (s) [1]
-    --start05:  double: start time for n0 to n5 (s) [1]
-    --start50:  double: start time for n5 to n0 (s) [1]
-    --start14:  double: start time for n1 to n4 (s) [1]
-    --start41:  double: start time for n4 to n1 (s) [1]
-    --start15:  double: start time for n1 to n5 (s) [1]
-    --start51:  double: start time for n5 to n1 (s) [1]
-    --int04:    double: interval between packets for n0 to n4 (s) [1]
-    --int40:    double: interval between packets for n4 to n0 (s) [1]
-    --int05:    double: interval between packets for n0 to n5 (s) [1]
-    --int50:    double: interval between packets for n5 to n0 (s) [1]
-    --int14:    double: interval between packets for n1 to n4 (s) [1]
-    --int41:    double: interval between packets for n4 to n1 (s) [1]
-    --int15:    double: interval between packets for n1 to n5 (s) [1]
-    --int51:    double: interval between packets for n5 to n1 (s) [1]
-    --num04:    int: number of packets to be sent from n0 to n4 [5]
-    --num40:    int: number of packets to be sent from n4 to n0 [5]
-    --num05:    int: number of packets to be sent from n0 to n5 [5]
-    --num50:    int: number of packets to be sent from n5 to n0 [5]
-    --num14:    int: number of packets to be sent from n1 to n4 [5]
-    --num41:    int: number of packets to be sent from n4 to n1 [5]
-    --num15:    int: number of packets to be sent from n1 to n5 [5]
-    --num51:    int: number of packets to be sent from n5 to n1 [5]
-    --pktSize:  int: size of packets to be sent (bytes) [1024]
-    --simEnd:   double: end time for the simulation [10]
+    --initiator:  String (int): Space separated integers indicating the nodes from which packets must be sent [0]
+    --target:     String (int): Space separated integers indicating the nodes to which packets must be sent [4]
+    --start:      String (double): Space separated floats indicating the start time for each transmission (s) [1.0]
+    --numPkts:    String (int): Space separated integers indicating the number of packets to be sent from initiator to target [5]
+    --pktSize:    String (int): Space separated integers indicating the individual packet size (in bytes) [1024]
+    --interval:   String (double): Space separated floats indicating the interval between packet sends (s) [1.0]
+    --pktSize:    int: size of packets to be sent (bytes) [1024]
+    --simEnd:     double: end time for the simulation [10]
 
 General Arguments:
     --PrintGlobals:              Print the list of globals.
@@ -121,12 +96,14 @@ General Arguments:
     --PrintHelp:                 Print this help message.
 ```
 Let us look at the type of arguments one by one:
-1. The --sendXY arguments accept boolean true/false values that enable packet transmission from node X to node Y, where X and Y are either 0, 1, 4 or 5.
-2. The --startXY arguments accept double precision floating point values that specify when to start packet transmission (in seconds) from node X to node Y.
-3. The --intXY arguments accept double precision floating point values that specify how long to wait between sending packets (in seconds), if multiple are to be sent from node X to node Y.
-4. The --numXY arguments accept integer values that specify how many packet to send from node X to node Y. 
-5. --pktSize accepts an integer value that specifies the size of the packets that are to be sent between nodes in the simulation.
-6. --simEnd accepts a double precision floating point value that specifies the time, in seconds at which to end the simulation.
+1. --initiator takes in a string of space separated integers, each of which can be either 0, 1, 4 or 5 indicating the initiators for sending packets. e.g. --initiator="0 1"
+2. --target takes in a string of space separated integers, each of which can be either 0, 1, 4 or 5 indicating the targets to which packets are sent. e.g. --target="4 5"\
+    In the --initiator="0 1" --target="4 5" setup, packets are sent from n0->n4 and from n1->n5.
+3. --start takes in a string of space separated double precision floating point numbers indicating the start time (in seconds) for each transmission. e.g. --start="1.0 2.0"
+4. --numPkts takes in a string of space separated integers, each of which specify the number of packets to be sent in each transmission setup. e.g. --numPkts="5 12" 
+6. --pktSize takes in a string of space separated integers, specifying the size of each packet (in bytes) that are sent in that particular transmission. e.g. --pktSize="512 1024"
+7. --interval takes in a string of space separated double precision floating point numbers, each of which specify the interval between packet sends in a particular transmission (in seconds). e.g. --interval="0.01 1.0"
+8. --simEnd accepts a double precision floating point value that specifies the time (in seconds) at which to end the simulation.
 
 When run without any command line arguments, the program sends 5 packets from n0 to n4 at intervals of 1s each.\
 

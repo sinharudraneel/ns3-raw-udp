@@ -3,7 +3,7 @@
  */
 
 #include "ns3/applications-module.h"
-#include "ns3/core-module.h" 
+#include "ns3/core-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
@@ -12,6 +12,7 @@
 #include "ns3/bridge-module.h"
 #include "ns3/log.h"
 #include "RawApp.h"
+#include <unordered_set>
 
 /*
  *  UDP Raw Socket Network Topology
@@ -22,16 +23,31 @@
  *                                      n2------------------n3
  *              10Mb/s, 3ms             |                    |         10Mb/s, 5ms
  *      n1------------------------------|                    |-----------------------------n5
- *      10.0.0.2                    10.0.2.1             10.0.2.2                   10.0.1.3       
- * 
+ *      10.0.0.2                    10.0.2.1             10.0.2.2                   10.0.1.3
+ *
  */
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("UDPTestScript");
 
-struct runConfig {
-    bool send;
+template <typename T>
+std::vector<T> parse(const std::string &input)
+{
+std:
+    std::vector<T> output;
+    std::istringstream stream(input);
+    T value;
+    while (stream >> value)
+    {
+        output.push_back(value);
+    }
+
+    return output;
+}
+
+struct runConfig
+{
     double interval;
     double start;
     int numPkts;
@@ -40,7 +56,8 @@ struct runConfig {
     Ptr<Node> dst;
 };
 
-enum channelNum {
+enum channelNum
+{
     channel04,
     channel40,
     channel05,
@@ -51,66 +68,76 @@ enum channelNum {
     channel51
 };
 
-int main(int argc, char* argv[]) {
-    int pktSize = 1024;
-    struct runConfig configs[8] = {true, 1.0, 1.0, 5, pktSize, nullptr, nullptr};
-    for (int i = 1; i < 8; i++) {
-        configs[i].send = false;
-        configs[i].interval = 1.0;
-        configs[i].start = 1.0;
-        configs[i].numPkts = 5;
-        configs[i].pktSize = pktSize;
-        configs[i].src = nullptr;
-        configs[i].dst = nullptr;
-    }
+int main(int argc, char *argv[])
+{
+
+    std::string initiator = "0";
+    std::string target = "4";
+    std::string start = "1.0";
+    std::string numPkts = "5";
+    std::string pktSize = "1024";
+    std::string interval = "1.0";
+
     double simEnd = 10.0;
     CommandLine cmd(__FILE__);
     cmd.Usage("Simulator for raw socket UDP packet transmission over a simple network topology\nHere are your options for the command line\n");
-    cmd.AddValue("send04", "bool: send packets from n0 to n4", configs[channel04].send);
-    cmd.AddValue("send40", "bool: send packets from n4 to n0", configs[channel40].send);
-    cmd.AddValue("send05", "bool: send packets from n0 to n5", configs[channel05].send);
-    cmd.AddValue("send50", "bool: send packets from n5 to n0", configs[channel50].send);
-    cmd.AddValue("send14", "bool: send packets from n1 to n4", configs[channel14].send);
-    cmd.AddValue("send41", "bool: send packets from n4 to n1", configs[channel41].send);
-    cmd.AddValue("send15", "bool: send packets from n1 to n5", configs[channel15].send);
-    cmd.AddValue("send51", "bool: send packets from n5 to n1", configs[channel51].send);
 
-    cmd.AddValue("start04", "double: start time for n0 to n4 (s)", configs[channel04].start);
-    cmd.AddValue("start40", "double: start time for n4 to n0 (s)", configs[channel40].start);
-    cmd.AddValue("start05", "double: start time for n0 to n5 (s)", configs[channel05].start);
-    cmd.AddValue("start50", "double: start time for n5 to n0 (s)", configs[channel50].start);
-    cmd.AddValue("start14", "double: start time for n1 to n4 (s)", configs[channel14].start);
-    cmd.AddValue("start41", "double: start time for n4 to n1 (s)", configs[channel41].start);
-    cmd.AddValue("start15", "double: start time for n1 to n5 (s)", configs[channel15].start);
-    cmd.AddValue("start51", "double: start time for n5 to n1 (s)", configs[channel51].start);
-    
-    cmd.AddValue("int04", "double: interval between packets for n0 to n4 (s)", configs[channel04].interval);
-    cmd.AddValue("int40", "double: interval between packets for n4 to n0 (s)", configs[channel40].interval);
-    cmd.AddValue("int05", "double: interval between packets for n0 to n5 (s)", configs[channel05].interval);
-    cmd.AddValue("int50", "double: interval between packets for n5 to n0 (s)", configs[channel50].interval);
-    cmd.AddValue("int14", "double: interval between packets for n1 to n4 (s)", configs[channel14].interval);
-    cmd.AddValue("int41", "double: interval between packets for n4 to n1 (s)", configs[channel41].interval);
-    cmd.AddValue("int15", "double: interval between packets for n1 to n5 (s)", configs[channel15].interval);
-    cmd.AddValue("int51", "double: interval between packets for n5 to n1 (s)", configs[channel51].interval);
+    cmd.AddValue("initiator", "String (int): Space separated integers indicating the nodes from which packets must be sent", initiator);
+    cmd.AddValue("target", "String (int): Space separated integers indicating the nodes to which packets must be sent", target);
+    cmd.AddValue("start", "String (double): Space separated floats indicating the start time for each transmission (s)", start);
+    cmd.AddValue("numPkts", "String (int): Space separated integers indicating the number of packets to be sent from initiator to target", numPkts);
+    cmd.AddValue("pktSize", "String (int): Space separated integers indicating the individual packet size (in bytes)", pktSize);
+    cmd.AddValue("interval", "String (double): Space separated floats indicating the interval between packet sends (s)", interval);
 
-    cmd.AddValue("num04", "int: number of packets to be sent from n0 to n4", configs[channel04].numPkts);
-    cmd.AddValue("num40", "int: number of packets to be sent from n4 to n0", configs[channel40].numPkts);
-    cmd.AddValue("num05", "int: number of packets to be sent from n0 to n5", configs[channel05].numPkts);
-    cmd.AddValue("num50", "int: number of packets to be sent from n5 to n0", configs[channel50].numPkts);
-    cmd.AddValue("num14", "int: number of packets to be sent from n1 to n4", configs[channel14].numPkts);
-    cmd.AddValue("num41", "int: number of packets to be sent from n4 to n1", configs[channel41].numPkts);
-    cmd.AddValue("num15", "int: number of packets to be sent from n1 to n5", configs[channel15].numPkts);
-    cmd.AddValue("num51", "int: number of packets to be sent from n5 to n1", configs[channel51].numPkts);
+    std::vector<int> initiatorVec = parse<int>(initiator);
+    std::vector<int> targetVec = parse<int>(target);
+    std::vector<double> startVec = parse<double>(start);
+    std::vector<int> numPktsVec = parse<int>(numPkts);
+    std::vector<int> pktSizeVec = parse<int>(pktSize);
+    std::vector<double> intervalVec = parse<double>(interval);
+
+    int numConfigs = initiatorVec.size();
+    if (targetVec.size() != numConfigs) {
+        std::cout << "ERROR: Make sure the number of targets match the number of initiators" << std::endl;
+        return;
+    }
+    std::unordered_set allowed = {0, 1, 4, 5};
+    for (int i = 0; i < numConfigs; i++) {
+        for (int num : initiatorVec) {
+            if (allowed.find(num) == allowed.end()) {
+                std::cout << "ERROR: Only 0, 1, 4, 5 can be initiators or targets" << std::endl;
+            }
+        }
+        for (int num : targetVec) {
+            if (allowed.find(num) == allowed.end()) {
+                std::cout << "ERROR: Only 0, 1, 4, 5 can be initiators or targets" << std::endl;
+            }
+        }
+    }
+    if (startVec.size() != numConfigs) {
+        for (int i = 0; i < (numConfigs - startVec.size()); i++) {
+            startVec.push_back(1.0);
+        }
+    }
+    if (numPktsVec.size() != numConfigs) {
+        for (int i = 0; i < (numConfigs - numPktsVec.size()); i++) {
+            numPktsVec.push_back(5);
+        }
+    }
+    if (pktSizeVec.size() != numConfigs) {
+        for (int i = 0; i < (numConfigs - pktSizeVec.size()); i++) {
+            pktSizeVec.push_back(1024);
+        }
+    }
+    if (intervalVec.size() != numConfigs) {
+        for (int i = 0; i < (numConfigs - intervalVec.size()); i++) {
+            intervalVec.push_back(1.0);
+        }
+    }
 
     cmd.AddValue("pktSize", "int: size of packets to be sent (bytes)", pktSize);
     cmd.AddValue("simEnd", "double: end time for the simulation", simEnd);
     cmd.Parse(argc, argv);
-
-    if (pktSize != 1024) {
-        for (int i = 0; i < 8; i++) {
-            configs[i].pktSize = pktSize;
-        }
-    }
 
     Time::SetResolution(Time::NS);
     // Log component enable
@@ -119,22 +146,16 @@ int main(int argc, char* argv[]) {
     NodeContainer nodes, endpoints, bridges;
     nodes.Create(6);
 
-    configs[channel04].src = nodes.Get(0);
-    configs[channel04].dst = nodes.Get(4);
-    configs[channel40].src = nodes.Get(4);
-    configs[channel40].dst = nodes.Get(0);
-    configs[channel05].src = nodes.Get(0);
-    configs[channel05].dst = nodes.Get(5);
-    configs[channel14].src = nodes.Get(1);
-    configs[channel14].dst = nodes.Get(4);
-    configs[channel50].src = nodes.Get(5);
-    configs[channel50].dst = nodes.Get(0);
-    configs[channel41].src = nodes.Get(4);
-    configs[channel41].dst = nodes.Get(1);
-    configs[channel15].src = nodes.Get(1);
-    configs[channel15].dst = nodes.Get(5);
-    configs[channel51].src = nodes.Get(5);
-    configs[channel51].dst = nodes.Get(1);
+    struct runConfig configs[numConfigs];
+    for (int i = 0; i < numConfigs; i++)
+    {
+        configs[i].src = nodes.Get(initiatorVec[i]);
+        configs[i].dst = nodes.Get(targetVec[i]);
+        configs[i].interval = intervalVec[i];
+        configs[i].numPkts = numPktsVec[i];
+        configs[i].pktSize = pktSizeVec[i];
+        configs[i].start = startVec[i];
+    }
 
     LogComponentEnable("UDPTestScript", LOG_LEVEL_LOGIC);
 
@@ -164,7 +185,7 @@ int main(int argc, char* argv[]) {
     csmaSwitch1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
     NetDeviceContainer n0n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
     NetDeviceContainer n1n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
-    
+
     // CSMA Channel for Switch 2 System
     NS_LOG_LOGIC("Setting up Ethernet(CSMA) Channel for Switch 2 (n3, n4, n5)");
     CsmaHelper csmaSwitch2;
@@ -180,7 +201,7 @@ int main(int argc, char* argv[]) {
     csmaInter.SetChannelAttribute("Delay", StringValue("15ms"));
     NetDeviceContainer interDevices = csmaInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
 
-    // Set up ports for Switch 1 (n2) 
+    // Set up ports for Switch 1 (n2)
     // i.e. connect the CSMA net devices of all direct
     // connections on that switch
     NetDeviceContainer bridge1ports;
@@ -188,7 +209,7 @@ int main(int argc, char* argv[]) {
     bridge1ports.Add(n1n2.Get(1));
     bridge1ports.Add(interDevices.Get(0));
 
-    // Set up ports for Switch 2 (n3) 
+    // Set up ports for Switch 2 (n3)
     // i.e. connect the CSMA net devices of all direct
     // connections on that switch
     NetDeviceContainer bridge2ports;
@@ -216,31 +237,29 @@ int main(int argc, char* argv[]) {
     // Set up sending and receiving applicataions for each channel
     // activated by the user.
 
-    for (int i = 0; i < 8; i++) {
-        if (configs[i].send) {
+    for (int i = 0; i < numConfigs; i++)
+    {
 
-            Ptr<RawApp> rcvAppLoop = CreateObject<RawApp>();
-            rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0.1), false, configs[i].src);
-            configs[i].dst->AddApplication(rcvAppLoop);
-            rcvAppLoop->SetStartTime(Seconds(configs[i].start));
-            rcvAppLoop->SetStopTime(Seconds(simEnd));
+        Ptr<RawApp> rcvAppLoop = CreateObject<RawApp>();
+        rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src);
+        configs[i].dst->AddApplication(rcvAppLoop);
+        rcvAppLoop->SetStartTime(Seconds(configs[i].start));
+        rcvAppLoop->SetStopTime(Seconds(simEnd));
 
-            Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
-            sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval) ,true, configs[i].dst);
-            configs[i].src->AddApplication(sndAppLoop);
-            sndAppLoop->SetStartTime(Seconds(configs[i].start));
-            sndAppLoop->SetStopTime(Seconds(simEnd));
-            
-        }
+        Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
+        sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst);
+        configs[i].src->AddApplication(sndAppLoop);
+        sndAppLoop->SetStartTime(Seconds(configs[i].start));
+        sndAppLoop->SetStopTime(Seconds(simEnd));
     }
 
     // Enable packet capture for each endpoint.
-    
+
     csmaSwitch1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
     csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
     csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
     csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
-    
+
     Simulator::Run();
     Simulator::Destroy();
 

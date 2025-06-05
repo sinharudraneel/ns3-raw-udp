@@ -22,6 +22,7 @@ RawApp::RawApp()
     m_pktSize = 0;
     m_pktCount = 0;
     m_sent = 0;
+    m_PSN = 0;
 }
 
 // Destructor for RawApp, sets socket to nullptr
@@ -112,7 +113,7 @@ void RawApp::SendPacket()
             return;
         }
 
-        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " sent Packet at time " << Simulator::Now().GetSeconds() << "s");
+        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " sent Packet " << m_sent << " at time " << Simulator::Now().GetSeconds() << "s");
 
         m_sent++;
         
@@ -130,7 +131,8 @@ void RawApp::ReceivePacket(Ptr<Socket> socket)
     Ptr<Packet> pkt;
     while ((pkt = socket->Recv()))
     {
-        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " received packet of size " << pkt->GetSize() << " at time " << Simulator::Now().GetSeconds() << "s");
+        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " received packet " << m_PSN << " of size " << pkt->GetSize() << " at time " << Simulator::Now().GetSeconds() << "s");
+        m_PSN++; // Only local to one channel, need to implement global packet counting 
     }
 }
 }

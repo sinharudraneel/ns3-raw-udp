@@ -38,6 +38,7 @@ class RawApp : public Application {
         EventId m_sendEvent;    // Send Event
         bool m_isSender;        // Identify sender from receiver
         Ptr<Node> m_destNode;   // Destination node for MAC Address
+        int m_PSN;              // Packet tracking num
 
 };
 
