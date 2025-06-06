@@ -13,6 +13,8 @@
 #include "ns3/log.h"
 #include "RawApp.h"
 #include <unordered_set>
+#include "ns3/pyviz.h"
+#include "external/popl.hpp"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -34,13 +36,13 @@ NS_LOG_COMPONENT_DEFINE("UDPTestScript");
 template <typename T>
 std::vector<T> parse(const std::string &input)
 {
-std:
     std::vector<T> output;
     std::istringstream stream(input);
-    T value;
+    std::string value;
     while (stream >> value)
     {
-        output.push_back(value);
+        T val = std::stoi(value);
+        output.push_back(val);
     }
 
     return output;
@@ -70,36 +72,46 @@ enum channelNum
 
 int main(int argc, char *argv[])
 {
+    auto op = popl::OptionParser("Allowed Options");
 
-    std::string initiator = "0";
-    std::string target = "4";
-    std::string start = "1.0";
-    std::string numPkts = "5";
-    std::string pktSize = "1024";
-    std::string interval = "1.0";
+    auto initiatorOpt = op.add<popl::Value<std::string>>("i", "initiator", "String (int): Space separated integers indicating the nodes from which packets must be sent", "0");
+    auto targetOpt = op.add<popl::Value<std::string>>("t", "target", "String (int): Space separated integers indicating the nodes to which packets must be sent", "4");
+    auto startOpt = op.add<popl::Value<std::string>>("s", "start", "String (double): Space separated floats indicating the start time for each transmission (s)", "1.0");
+    auto numPktsOpt = op.add<popl::Value<std::string>>("n", "numPkts", "String (int): Space separated integers indicating the number of packets to be sent from initiator to target", "5");
+    auto pktSizeOpt = op.add<popl::Value<std::string>>("p", "pktSize", "String (int): Space separated integers indicating the individual packet size (in bytes)", "1024");
+    auto intervalOpt = op.add<popl::Value<std::string>>("l", "interval", "String (double): Space separated floats indicating the interval between packet sends (s)", "1.0");
+    auto simEndOpt = op.add<popl::Value<double>>("e", "simEnd", "double: end time for the simulation", 10.0);
+    auto helpOpt = op.add<popl::Switch>("h", "help", "Print this help message");
 
-    double simEnd = 10.0;
-    CommandLine cmd(__FILE__);
-    cmd.Usage("Simulator for raw socket UDP packet transmission over a simple network topology\nHere are your options for the command line\n");
+    
 
-    cmd.AddValue("initiator", "String (int): Space separated integers indicating the nodes from which packets must be sent", initiator);
-    cmd.AddValue("target", "String (int): Space separated integers indicating the nodes to which packets must be sent", target);
-    cmd.AddValue("start", "String (double): Space separated floats indicating the start time for each transmission (s)", start);
-    cmd.AddValue("numPkts", "String (int): Space separated integers indicating the number of packets to be sent from initiator to target", numPkts);
-    cmd.AddValue("pktSize", "String (int): Space separated integers indicating the individual packet size (in bytes)", pktSize);
-    cmd.AddValue("interval", "String (double): Space separated floats indicating the interval between packet sends (s)", interval);
+    try {
+        op.parse(argc, argv);
+        if (helpOpt->is_set()) {
+            std::cout << op << std::endl;
+            return -1;
+        }
+    }
+    catch (const std::exception &e) {
+        std::cerr << "Error parsing arguments: " << e.what() << std::endl;
+        std::cout << op << std::endl;
+        return 1; 
+    }
 
-    std::vector<int> initiatorVec = parse<int>(initiator);
-    std::vector<int> targetVec = parse<int>(target);
-    std::vector<double> startVec = parse<double>(start);
-    std::vector<int> numPktsVec = parse<int>(numPkts);
-    std::vector<int> pktSizeVec = parse<int>(pktSize);
-    std::vector<double> intervalVec = parse<double>(interval);
+
+    std::cout << initiatorOpt->value() << std::endl;
+
+    std::vector<int> initiatorVec = parse<int>(initiatorOpt->value());
+    std::vector<int> targetVec = parse<int>(targetOpt->value());
+    std::vector<double> startVec = parse<double>(startOpt->value());
+    std::vector<int> numPktsVec = parse<int>(numPktsOpt->value());
+    std::vector<int> pktSizeVec = parse<int>(pktSizeOpt->value());
+    std::vector<double> intervalVec = parse<double>(intervalOpt->value());
 
     int numConfigs = initiatorVec.size();
     if (targetVec.size() != numConfigs) {
         std::cout << "ERROR: Make sure the number of targets match the number of initiators" << std::endl;
-        return;
+        return 1;
     }
     std::unordered_set allowed = {0, 1, 4, 5};
     for (int i = 0; i < numConfigs; i++) {
@@ -111,6 +123,7 @@ int main(int argc, char *argv[])
         for (int num : targetVec) {
             if (allowed.find(num) == allowed.end()) {
                 std::cout << "ERROR: Only 0, 1, 4, 5 can be initiators or targets" << std::endl;
+                return 1;
             }
         }
     }
@@ -134,10 +147,7 @@ int main(int argc, char *argv[])
             intervalVec.push_back(1.0);
         }
     }
-
-    cmd.AddValue("pktSize", "int: size of packets to be sent (bytes)", pktSize);
-    cmd.AddValue("simEnd", "double: end time for the simulation", simEnd);
-    cmd.Parse(argc, argv);
+    std::cout << "Num Configs: " << numConfigs << std::endl;
 
     Time::SetResolution(Time::NS);
     // Log component enable
@@ -244,13 +254,13 @@ int main(int argc, char *argv[])
         rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src);
         configs[i].dst->AddApplication(rcvAppLoop);
         rcvAppLoop->SetStartTime(Seconds(configs[i].start));
-        rcvAppLoop->SetStopTime(Seconds(simEnd));
+        rcvAppLoop->SetStopTime(Seconds(simEndOpt->value()));
 
         Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
         sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst);
         configs[i].src->AddApplication(sndAppLoop);
         sndAppLoop->SetStartTime(Seconds(configs[i].start));
-        sndAppLoop->SetStopTime(Seconds(simEnd));
+        sndAppLoop->SetStopTime(Seconds(simEndOpt->value()));
     }
 
     // Enable packet capture for each endpoint.
