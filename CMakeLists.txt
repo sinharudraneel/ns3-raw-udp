@@ -25,7 +25,13 @@ file(GLOB NS3_LIBS "${NS3_LIB_PATH}/libns3*.so")
 set(SOURCES
     RawApp.h
     RawApp.cc
-    rawudpnet.cc    
+    rawudpnet.cc
+    simple-net-device-pcap.h
+    simple-net-device-pcap.cc 
+    simple-channel-pcap.h
+    simple-channel-pcap.cc   
+    simple-net-device-helper-pcap.h
+    simple-net-device-helper-pcap.cc
 )
 
 add_executable(rawudpnet ${SOURCES})

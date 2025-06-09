@@ -15,9 +15,9 @@
 #include <unordered_set>
 #include "ns3/pyviz.h"
 #include "external/popl.hpp"
-#include "ns3/simple-channel.h"
-#include "ns3/simple-net-device-helper.h"
-#include "ns3/simple-net-device.h"
+#include "simple-channel-pcap.h"
+#include "simple-net-device-helper-pcap.h"
+#include "simple-net-device-pcap.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -66,6 +66,10 @@ struct runConfig
     Ptr<Node> src;
     Ptr<Node> dst;
 };
+
+void PcapOutput(Ptr<PcapFileWrapper> filename, Ptr<const Packet> pkt) {
+    filename->Write(Simulator::Now(), pkt);
+}
 
 
 int main(int argc, char *argv[])
@@ -184,7 +188,7 @@ int main(int argc, char *argv[])
 
     // Simple Channel for Switch 1 System
     NS_LOG_LOGIC("Setting up Simple Channel for Switch system 1 (n0, n1, n2)");
-    SimpleNetDeviceHelper simpleHelper1;
+    SimpleNetDeviceHelperPcap simpleHelper1;
     simpleHelper1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
     NetDeviceContainer n0n2 = simpleHelper1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
     NetDeviceContainer n1n2 = simpleHelper1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
@@ -192,14 +196,14 @@ int main(int argc, char *argv[])
     
     // Simple Channel for Switch 2 system
     NS_LOG_LOGIC("Setting up Simple Channel for Switch system 2 (n3, n4, n5)");
-    SimpleNetDeviceHelper simpleHelper2;
+    SimpleNetDeviceHelperPcap simpleHelper2;
     simpleHelper2.SetChannelAttribute("Delay", TimeValue(MilliSeconds(5)));
     NetDeviceContainer n3n4 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
     NetDeviceContainer n3n5 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(5)));
 
     // Simple Channel for inter switch comms
     NS_LOG_LOGIC("Setting up Simple Channel between switches (n2, n3)");
-    SimpleNetDeviceHelper simpleInter;
+    SimpleNetDeviceHelperPcap simpleInter;
     simpleInter.SetChannelAttribute("Delay", TimeValue(MilliSeconds(15)));
     NetDeviceContainer interDevices = simpleInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
 
@@ -257,8 +261,12 @@ int main(int argc, char *argv[])
     }
 
     // Enable packet capture for each endpoint.
+    
 
-    // simpleHelper1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
+    simpleHelper1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
+    simpleHelper1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
+    simpleHelper2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
+    simpleHelper2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
     // csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
     // csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
     // csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
