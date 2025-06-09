@@ -91,6 +91,10 @@ void RawApp::SendPacket()
         //LogComponentEnable("RawApp", LOG_LEVEL_DEBUG);
         Ptr<Packet> pkt = Create<Packet>(m_pktSize);
 
+        // EthernetHeader ethHeader;
+        // ethHeader.SetSource(Mac48Address::ConvertFrom(GetNode()->GetDevice(1)->GetAddress()));
+        // ethHeader.SetDestination(Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()));
+
 
         Ipv4Header ipheader;
         ipheader.SetSource(GetNode()->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal());
@@ -107,6 +111,7 @@ void RawApp::SendPacket()
         udpheader.SetDestinationPort(8080);
         pkt->AddHeader(udpheader);
         pkt->AddHeader(ipheader);
+        //pkt->AddHeader(ethHeader);
 
         if (!m_socket->Send(pkt)) {
             NS_LOG_UNCOND("Error in Sending");

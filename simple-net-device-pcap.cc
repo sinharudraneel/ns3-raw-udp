@@ -11,6 +11,7 @@
  #include "ns3/tag.h"
  #include "ns3/simulator.h"
  #include "ns3/queue.h"
+ #include "ns3/ethernet-header.h"
   
  namespace ns3 {
   
@@ -186,11 +187,16 @@
  void
  SimpleNetDevicePcap::Receive (Ptr<Packet> packet, uint16_t protocol,
                            Mac48Address to, Mac48Address from)
- {
+ { 
    NS_LOG_FUNCTION (this << packet << protocol << to << from);
    NetDevice::PacketType packetType;
-
+   EthernetHeader ethHeader;
+   ethHeader.SetSource(Mac48Address::ConvertFrom(from));
+   ethHeader.SetSource(Mac48Address::ConvertFrom(to));
+   ethHeader.SetLengthType(protocol);
+   packet->AddHeader(ethHeader);
    m_snifferTrace(packet);
+   packet->RemoveHeader(ethHeader);
   
    if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) )
      {
@@ -398,6 +404,14 @@
    tag.SetProto (protocolNumber);
   
    p->AddPacketTag (tag);
+
+   EthernetHeader ethHeader;
+   ethHeader.SetSource(Mac48Address::ConvertFrom(source));
+   ethHeader.SetSource(Mac48Address::ConvertFrom(dest));
+   ethHeader.SetLengthType(protocolNumber);
+   p->AddHeader(ethHeader);
+   m_snifferTrace(p);
+   p->RemoveHeader(ethHeader);
   
    if (m_queue->Enqueue (p))
      {
@@ -421,7 +435,7 @@
    NS_ASSERT_MSG (!FinishTransmissionEvent.IsRunning (),
                   "Tried to transmit a packet while another transmission was in progress");
    Ptr<Packet> packet = m_queue->Dequeue ();
-   m_snifferTrace(packet); // Sniffer registration with packet
+
   
    Time txTime = Time (0);
    if (m_bps > DataRate (0))

@@ -139,7 +139,7 @@
    Ptr<SimpleNetDevicePcap> device = nd->GetObject<SimpleNetDevicePcap> ();
    if (device == 0)
      {
-       NS_LOG_INFO ("CsmaHelper::EnablePcapInternal(): Device " << device << " not of type ns3::SimpleNetDevicePcap");
+       NS_LOG_INFO ("SimpleNetDevicePcap::EnablePcapInternal(): Device " << device << " not of type ns3::SimpleNetDevicePcap");
        return;
      }
   
