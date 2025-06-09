@@ -15,6 +15,9 @@
 #include <unordered_set>
 #include "ns3/pyviz.h"
 #include "external/popl.hpp"
+#include "ns3/simple-channel.h"
+#include "ns3/simple-net-device-helper.h"
+#include "ns3/simple-net-device.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -179,28 +182,27 @@ int main(int argc, char *argv[])
     // their unique MAC addresses. We set up channels of three types, one between switches and one between endpoints
     // and their respective switch. These have latency and bandwidth parameters as described in the network topology.
 
-    // CSMA Channel for Switch 1 System
-    NS_LOG_LOGIC("Setting up Ethernet(CSMA) Channel for Switch 1 (n0, n1, n2)");
-    CsmaHelper csmaSwitch1;
-    csmaSwitch1.SetChannelAttribute("DataRate", StringValue("10Mbps"));
-    csmaSwitch1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
-    NetDeviceContainer n0n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
-    NetDeviceContainer n1n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
+    // Simple Channel for Switch 1 System
+    NS_LOG_LOGIC("Setting up Simple Channel for Switch system 1 (n0, n1, n2)");
+    SimpleNetDeviceHelper simpleHelper1;
+    simpleHelper1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
+    NetDeviceContainer n0n2 = simpleHelper1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
+    NetDeviceContainer n1n2 = simpleHelper1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
 
-    // CSMA Channel for Switch 2 System
-    NS_LOG_LOGIC("Setting up Ethernet(CSMA) Channel for Switch 2 (n3, n4, n5)");
-    CsmaHelper csmaSwitch2;
-    csmaSwitch2.SetChannelAttribute("DataRate", StringValue("10Mbps"));
-    csmaSwitch2.SetChannelAttribute("Delay", TimeValue(MilliSeconds(5)));
-    NetDeviceContainer n3n4 = csmaSwitch2.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
-    NetDeviceContainer n3n5 = csmaSwitch2.Install(NodeContainer(nodes.Get(3), nodes.Get(5)));
+    
+    // Simple Channel for Switch 2 system
+    NS_LOG_LOGIC("Setting up Simple Channel for Switch system 2 (n3, n4, n5)");
+    SimpleNetDeviceHelper simpleHelper2;
+    simpleHelper2.SetChannelAttribute("Delay", TimeValue(MilliSeconds(5)));
+    NetDeviceContainer n3n4 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
+    NetDeviceContainer n3n5 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(5)));
 
-    // CSMA Channel for n2 -- n3
-    NS_LOG_LOGIC("Setting up Ethernet(CSMA) Channel between Switches (n2, n3)");
-    CsmaHelper csmaInter;
-    csmaInter.SetChannelAttribute("DataRate", StringValue("1.5Mbps"));
-    csmaInter.SetChannelAttribute("Delay", StringValue("15ms"));
-    NetDeviceContainer interDevices = csmaInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
+    // Simple Channel for inter switch comms
+    NS_LOG_LOGIC("Setting up Simple Channel between switches (n2, n3)");
+    SimpleNetDeviceHelper simpleInter;
+    simpleInter.SetChannelAttribute("Delay", TimeValue(MilliSeconds(15)));
+    NetDeviceContainer interDevices = simpleInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
+
 
     // Set up ports for Switch 1 (n2)
     // i.e. connect the CSMA net devices of all direct
@@ -256,10 +258,10 @@ int main(int argc, char *argv[])
 
     // Enable packet capture for each endpoint.
 
-    csmaSwitch1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
-    csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
-    csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
-    csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
+    // simpleHelper1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
+    // csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
+    // csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
+    // csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
 
     Simulator::Run();
     Simulator::Destroy();
