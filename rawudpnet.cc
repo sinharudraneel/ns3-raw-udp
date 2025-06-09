@@ -40,8 +40,14 @@ std::vector<T> parse(const std::string &input)
     std::istringstream stream(input);
     std::string value;
     while (stream >> value)
-    {
-        T val = std::stoi(value);
+    {   
+        T val;
+        if(std::is_same<T, int>()) {
+            val = std::stoi(value);
+        }
+        else if (std::is_same<T, double>()) {
+            val = std::stod(value);
+        }
         output.push_back(val);
     }
 
@@ -58,17 +64,6 @@ struct runConfig
     Ptr<Node> dst;
 };
 
-enum channelNum
-{
-    channel04,
-    channel40,
-    channel05,
-    channel50,
-    channel14,
-    channel41,
-    channel15,
-    channel51
-};
 
 int main(int argc, char *argv[])
 {
@@ -97,9 +92,6 @@ int main(int argc, char *argv[])
         std::cout << op << std::endl;
         return 1; 
     }
-
-
-    std::cout << initiatorOpt->value() << std::endl;
 
     std::vector<int> initiatorVec = parse<int>(initiatorOpt->value());
     std::vector<int> targetVec = parse<int>(targetOpt->value());
@@ -147,7 +139,6 @@ int main(int argc, char *argv[])
             intervalVec.push_back(1.0);
         }
     }
-    std::cout << "Num Configs: " << numConfigs << std::endl;
 
     Time::SetResolution(Time::NS);
     // Log component enable
