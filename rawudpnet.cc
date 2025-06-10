@@ -15,6 +15,8 @@
 #include <unordered_set>
 #include "ns3/pyviz.h"
 #include "external/popl.hpp"
+#include "ns3/netanim-module.h"
+#include "ns3/mobility-module.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -147,6 +149,11 @@ int main(int argc, char *argv[])
     NodeContainer nodes, endpoints, bridges;
     nodes.Create(6);
 
+    //GlobalValue::Bind("SimulatorImplementationType", ns3::StringValue("ns3::VisualSimulatorImpl"));
+    MobilityHelper mobility;
+    mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+    mobility.Install(nodes);
+
     struct runConfig configs[numConfigs];
     for (int i = 0; i < numConfigs; i++)
     {
@@ -256,11 +263,20 @@ int main(int argc, char *argv[])
 
     // Enable packet capture for each endpoint.
 
-    csmaSwitch1.EnablePcap("endpoint-n0", n0n2.Get(0), true);
-    csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0), true);
-    csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1), true);
-    csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1), true);
-
+    csmaSwitch1.EnablePcap("endpoint-n0", n0n2.Get(0));
+    csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0));
+    csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1));
+    csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1));
+    
+    AnimationInterface anim("simulation.xml");
+    anim.SetConstantPosition(nodes.Get(0), 0.0, 0.0);
+    anim.SetConstantPosition(nodes.Get(1), 0.0, 10.0);
+    anim.SetConstantPosition(nodes.Get(2), 2.5, 5.0);
+    anim.SetConstantPosition(nodes.Get(3), 7.5, 5.0);
+    anim.SetConstantPosition(nodes.Get(4), 10.0, 0.0);
+    anim.SetConstantPosition(nodes.Get(5), 10.0, 10.0);
+    anim.EnablePacketMetadata(true);
+    
     Simulator::Run();
     Simulator::Destroy();
 

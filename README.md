@@ -38,12 +38,22 @@ sudo apt update
 sudo apt install libns3-dev
 ```
 This would install the libraries and headers in (similar folders if not exactly the same):
-- Libraries: `/usr/lib/x86_64-linux-gnu/libns3*.so`
-- Headers: `/usr/include/ns3.35/`\
+- Libraries: `/usr/lib/x86_64-linux-gnu/libns3*.so` or `/path/to/cloned/ns3/build/lib/`
+- Headers: `/usr/include/ns3.35/` or `/path/to/cloned/ns3/build/include/`\
 The version might differ in the example include path.
 
 
-**Option 2: Cloning the GitHub Repository** 
+**Option 2: Cloning the GitHub Repository**
+Using apt to install ns3 can often lead to using older versions of ns3. As of writing this, the default installation through apt is the 3.35 release of ns3 while the latest release is 3.45. If you want to use the latest installation, or want easier ns3 configuration/building options (enabling/disabling different modules), then install ns3 using git as follows:
+```
+git clone https://gitlab.com/nsnam/ns-3-dev.git
+cd ns-3-dev
+
+./ns3 configure --enable-examples --enable-tests
+./ns3 build
+```
+For further details on the different ways to configure and build ns3, refer to the installation tutorial [here](https://www.nsnam.org/documentation/).
+
 
 ## Compiling the Simulation
 ### Clone the Repository:

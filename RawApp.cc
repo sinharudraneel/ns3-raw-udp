@@ -74,7 +74,7 @@ void RawApp::StopApplication()
 {
     m_running = false;
     // Cancel any pending event as of the time of calling this function
-    if (m_sendEvent.IsRunning()) {
+    if (m_sendEvent.IsPending()) {
         Simulator::Cancel(m_sendEvent);
     }
     // Close Socket
