@@ -144,7 +144,7 @@
      .AddTraceSource("Sniffer", 
                      "Trace source for packets passing through the device",
                      MakeTraceSourceAccessor(&SimpleNetDevicePcap::m_snifferTrace),
-                     "ns3::Packet::TracedCallback")
+                     "ns3::Packet::TracedCallback") // Edit 1: Add Trace Source for Packet Sniffer
      .AddAttribute ("ReceiveErrorModel",
                     "The receiver error model used to simulate packet loss",
                     PointerValue (),
@@ -190,12 +190,15 @@
  { 
    NS_LOG_FUNCTION (this << packet << protocol << to << from);
    NetDevice::PacketType packetType;
+
+   // Edit 2: Add ethernet header for the purposes of packet capture
    EthernetHeader ethHeader;
    ethHeader.SetSource(Mac48Address::ConvertFrom(from));
    ethHeader.SetSource(Mac48Address::ConvertFrom(to));
    ethHeader.SetLengthType(protocol);
    packet->AddHeader(ethHeader);
    m_snifferTrace(packet);
+   // Remove Ethernet Header promptly after
    packet->RemoveHeader(ethHeader);
   
    if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) )
@@ -405,12 +408,14 @@
   
    p->AddPacketTag (tag);
 
+   // Edit 3: Add ethernet header for packet capture
    EthernetHeader ethHeader;
    ethHeader.SetSource(Mac48Address::ConvertFrom(source));
    ethHeader.SetSource(Mac48Address::ConvertFrom(dest));
    ethHeader.SetLengthType(protocolNumber);
    p->AddHeader(ethHeader);
    m_snifferTrace(p);
+   // Remove ethernet header promptly after
    p->RemoveHeader(ethHeader);
   
    if (m_queue->Enqueue (p))

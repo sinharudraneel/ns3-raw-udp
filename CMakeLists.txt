@@ -23,15 +23,15 @@ include_directories(".")
 file(GLOB NS3_LIBS "${NS3_LIB_PATH}/libns3*.so")
 
 set(SOURCES
-    RawApp.h
-    RawApp.cc
-    rawudpnet.cc
-    simple-net-device-pcap.h
-    simple-net-device-pcap.cc 
-    simple-channel-pcap.h
-    simple-channel-pcap.cc   
-    simple-net-device-helper-pcap.h
-    simple-net-device-helper-pcap.cc
+    raw-app.h
+    raw-app.cc
+    raw-udp-net-main.cc
+    custom-simple/simple-net-device-pcap.h
+    custom-simple/simple-net-device-pcap.cc 
+    custom-simple/simple-channel-pcap.h
+    custom-simple/simple-channel-pcap.cc   
+    custom-simple/simple-net-device-helper-pcap.h
+    custom-simple/simple-net-device-helper-pcap.cc
 )
 
 add_executable(rawudpnet ${SOURCES})

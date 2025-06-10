@@ -11,13 +11,13 @@
 #include "ns3/csma-net-device.h"
 #include "ns3/bridge-module.h"
 #include "ns3/log.h"
-#include "RawApp.h"
+#include "raw-app.h"
 #include <unordered_set>
 #include "ns3/pyviz.h"
 #include "external/popl.hpp"
-#include "simple-channel-pcap.h"
-#include "simple-net-device-helper-pcap.h"
-#include "simple-net-device-pcap.h"
+#include "custom-simple/simple-channel-pcap.h"
+#include "custom-simple/simple-net-device-helper-pcap.h"
+#include "custom-simple/simple-net-device-pcap.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
     NS_LOG_LOGIC("Setting up Simple Channel for Switch system 1 (n0, n1, n2)");
     SimpleNetDeviceHelperPcap simpleHelper1;
     simpleHelper1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
+    simpleHelper1.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
     NetDeviceContainer n0n2 = simpleHelper1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
     NetDeviceContainer n1n2 = simpleHelper1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
 
@@ -198,6 +199,7 @@ int main(int argc, char *argv[])
     NS_LOG_LOGIC("Setting up Simple Channel for Switch system 2 (n3, n4, n5)");
     SimpleNetDeviceHelperPcap simpleHelper2;
     simpleHelper2.SetChannelAttribute("Delay", TimeValue(MilliSeconds(5)));
+    simpleHelper2.SetDeviceAttribute("DataRate", StringValue("10Mbps"));
     NetDeviceContainer n3n4 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
     NetDeviceContainer n3n5 = simpleHelper2.Install(NodeContainer(nodes.Get(3), nodes.Get(5)));
 
@@ -205,6 +207,7 @@ int main(int argc, char *argv[])
     NS_LOG_LOGIC("Setting up Simple Channel between switches (n2, n3)");
     SimpleNetDeviceHelperPcap simpleInter;
     simpleInter.SetChannelAttribute("Delay", TimeValue(MilliSeconds(15)));
+    simpleInter.SetDeviceAttribute("DataRate", StringValue("1.5Mbps"));
     NetDeviceContainer interDevices = simpleInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
 
 

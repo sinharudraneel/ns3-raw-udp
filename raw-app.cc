@@ -1,4 +1,4 @@
-#include "RawApp.h"
+#include "raw-app.h"
 
 namespace ns3 {
 
