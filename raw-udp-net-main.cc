@@ -18,6 +18,9 @@
 #include "custom-simple/simple-channel-pcap.h"
 #include "custom-simple/simple-net-device-helper-pcap.h"
 #include "custom-simple/simple-net-device-pcap.h"
+#include <map>
+#include <fstream>
+#include "ns3/drop-tail-queue.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -69,6 +72,48 @@ struct runConfig
 
 void PcapOutput(Ptr<PcapFileWrapper> filename, Ptr<const Packet> pkt) {
     filename->Write(Simulator::Now(), pkt);
+}
+
+static std::map<uint32_t, uint32_t> nodeDropCounts;
+static std::ofstream dropLogFile;
+
+static void PacketDropCallback(uint32_t nodeId, Ptr<const Packet> pkt)
+{
+    nodeDropCounts[nodeId]++;
+    dropLogFile << Simulator::Now().GetSeconds() << "\t" << nodeId << "\t" << nodeDropCounts[nodeId] << std::endl;
+    NS_LOG_UNCOND("Node " << nodeId << " dropped packet at time " << Simulator::Now().GetSeconds() << "s. Total drops at node: " << nodeDropCounts[nodeId]);
+}
+
+static void DropCallback(std::string context, Ptr<const Packet> pkt)
+{
+    // Extract node ID from the trace path context
+    // Context looks like: "/NodeList/2/DeviceList/0/$ns3::CsmaNetDevice/MacTxDrop"
+    size_t nodeStart = context.find("/NodeList/") + 10;
+    size_t nodeEnd = context.find("/", nodeStart);
+    uint32_t nodeId = std::stoi(context.substr(nodeStart, nodeEnd - nodeStart));
+
+    PacketDropCallback(nodeId, pkt);
+}
+
+void SetupDropTrack()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        nodeDropCounts[i] = 0;
+    }
+
+    dropLogFile.open("node-drops.dat");
+    dropLogFile << "# Time(s)\tNodeID\tCumulativeDrops" << std::endl;
+
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        std::ostringstream oss;
+
+        oss.str("");
+        oss << "/NodeList/" << i << "/DeviceList/*/$ns3::SimpleNetDevicePcap/PhyRxDrop";
+        Config::ConnectWithoutContext(oss.str(),
+                                      MakeBoundCallback(&PacketDropCallback, i));
+    }
 }
 
 
@@ -243,6 +288,8 @@ int main(int argc, char *argv[])
     interfaces.Add(ipv4.Assign(n1n2.Get(0)));
     interfaces.Add(ipv4.Assign(n3n4.Get(1)));
     interfaces.Add(ipv4.Assign(n3n5.Get(1)));
+
+    SetupDropTrack();
 
     // Set up sending and receiving applicataions for each channel
     // activated by the user.

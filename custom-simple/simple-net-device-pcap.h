@@ -1,100 +1,184 @@
 #ifndef SIMPLE_NET_DEVICE_PCAP_H
 #define SIMPLE_NET_DEVICE_PCAP_H
  
+#include "ns3/data-rate.h"
+#include "ns3/mac48-address.h"
+#include "ns3/queue-fwd.h"
+ 
+#include "ns3/event-id.h"
+#include "ns3/net-device.h"
+#include "ns3/traced-callback.h"
+ 
 #include <stdint.h>
 #include <string>
  
-#include "ns3/traced-callback.h"
-#include "ns3/net-device.h"
-#include "ns3/data-rate.h"
-#include "ns3/event-id.h"
+namespace ns3
+{
  
-#include "ns3/mac48-address.h"
- 
-namespace ns3 {
- 
-template <typename Item> class Queue;
 class SimpleChannelPcap;
 class Node;
 class ErrorModel;
  
+/**
+ * @ingroup netdevice
+ *
+ * This device assumes 48-bit mac addressing; there is also the possibility to
+ * add an ErrorModel if you want to force losses on the device.
+ *
+ * The device can be installed on a node through the SimpleNetDevicePcapHelper.
+ * In case of manual creation, the user is responsible for assigning an unique
+ * address to the device.
+ *
+ * By default the device is in Broadcast mode, with infinite bandwidth.
+ *
+ * @brief simple net device for simple things and testing
+ */
 class SimpleNetDevicePcap : public NetDevice
 {
-public:
-  static TypeId GetTypeId (void);
-  SimpleNetDevicePcap ();
+  public:
+    /**
+     * @brief Get the type ID.
+     * @return the object TypeId
+     */
+    static TypeId GetTypeId();
+    SimpleNetDevicePcap();
  
-  void Receive (Ptr<Packet> packet, uint16_t protocol, Mac48Address to, Mac48Address from);
-  
-  void SetChannel (Ptr<SimpleChannelPcap> channel);
+    /**
+     * Receive a packet from a connected SimpleChannelPcap.  The
+     * SimpleNetDevicePcap receives packets from its connected channel
+     * and then forwards them by calling its rx callback method
+     *
+     * @param packet Packet received on the channel
+     * @param protocol protocol number
+     * @param to address packet should be sent to
+     * @param from address packet was sent from
+     */
+    void Receive(Ptr<Packet> packet, uint16_t protocol, Mac48Address to, Mac48Address from);
  
-  void SetQueue (Ptr<Queue<Packet> > queue);
+    /**
+     * Attach a channel to this net device.  This will be the
+     * channel the net device sends on
+     *
+     * @param channel channel to assign to this net device
+     *
+     */
+    void SetChannel(Ptr<SimpleChannelPcap> channel);
  
-  Ptr<Queue<Packet> > GetQueue (void) const;
+    /**
+     * Attach a queue to the SimpleNetDevicePcap.
+     *
+     * @param queue Ptr to the new queue.
+     */
+    void SetQueue(Ptr<Queue<Packet>> queue);
  
-  void SetReceiveErrorModel (Ptr<ErrorModel> em);
+    /**
+     * Get a copy of the attached Queue.
+     *
+     * @returns Ptr to the queue.
+     */
+    Ptr<Queue<Packet>> GetQueue() const;
  
-  // inherited from NetDevice base class.
-  virtual void SetIfIndex (const uint32_t index);
-  virtual uint32_t GetIfIndex (void) const;
-  virtual Ptr<Channel> GetChannel (void) const;
-  virtual void SetAddress (Address address);
-  virtual Address GetAddress (void) const;
-  virtual bool SetMtu (const uint16_t mtu);
-  virtual uint16_t GetMtu (void) const;
-  virtual bool IsLinkUp (void) const;
-  virtual void AddLinkChangeCallback (Callback<void> callback);
-  virtual bool IsBroadcast (void) const;
-  virtual Address GetBroadcast (void) const;
-  virtual bool IsMulticast (void) const;
-  virtual Address GetMulticast (Ipv4Address multicastGroup) const;
-  virtual bool IsPointToPoint (void) const;
-  virtual bool IsBridge (void) const;
-  virtual bool Send (Ptr<Packet> packet, const Address& dest, uint16_t protocolNumber);
-  virtual bool SendFrom (Ptr<Packet> packet, const Address& source, const Address& dest, uint16_t protocolNumber);
-  virtual Ptr<Node> GetNode (void) const;
-  virtual void SetNode (Ptr<Node> node);
-  virtual bool NeedsArp (void) const;
-  virtual void SetReceiveCallback (NetDevice::ReceiveCallback cb);
+    /**
+     * Attach a receive ErrorModel to the SimpleNetDevicePcap.
+     *
+     * The SimpleNetDevicePcap may optionally include an ErrorModel in
+     * the packet receive chain.
+     *
+     * @see ErrorModel
+     * @param em Ptr to the ErrorModel.
+     */
+    void SetReceiveErrorModel(Ptr<ErrorModel> em);
  
-  virtual Address GetMulticast (Ipv6Address addr) const;
+    // inherited from NetDevice base class.
+    void SetIfIndex(const uint32_t index) override;
+    uint32_t GetIfIndex() const override;
+    Ptr<Channel> GetChannel() const override;
+    void SetAddress(Address address) override;
+    Address GetAddress() const override;
+    bool SetMtu(const uint16_t mtu) override;
+    uint16_t GetMtu() const override;
+    bool IsLinkUp() const override;
+    void AddLinkChangeCallback(Callback<void> callback) override;
+    bool IsBroadcast() const override;
+    Address GetBroadcast() const override;
+    bool IsMulticast() const override;
+    Address GetMulticast(Ipv4Address multicastGroup) const override;
+    bool IsPointToPoint() const override;
+    bool IsBridge() const override;
+    bool Send(Ptr<Packet> packet, const Address& dest, uint16_t protocolNumber) override;
+    bool SendFrom(Ptr<Packet> packet,
+                  const Address& source,
+                  const Address& dest,
+                  uint16_t protocolNumber) override;
+    Ptr<Node> GetNode() const override;
+    void SetNode(Ptr<Node> node) override;
+    bool NeedsArp() const override;
+    void SetReceiveCallback(NetDevice::ReceiveCallback cb) override;
  
-  virtual void SetPromiscReceiveCallback (PromiscReceiveCallback cb);
-  virtual bool SupportsSendFrom (void) const;
+    Address GetMulticast(Ipv6Address addr) const override;
  
-protected:
-  virtual void DoDispose (void);
+    void SetPromiscReceiveCallback(PromiscReceiveCallback cb) override;
+    bool SupportsSendFrom() const override;
  
-private:
-  Ptr<SimpleChannelPcap> m_channel; 
-  NetDevice::ReceiveCallback m_rxCallback; 
-  NetDevice::PromiscReceiveCallback m_promiscCallback; 
-  Ptr<Node> m_node; 
-  uint16_t m_mtu;   
-  uint32_t m_ifIndex; 
-  Mac48Address m_address; 
-  Ptr<ErrorModel> m_receiveErrorModel; 
+  protected:
+    void DoDispose() override;
  
-  TracedCallback<Ptr<const Packet> > m_phyRxDropTrace;
+  private:
+    Ptr<SimpleChannelPcap> m_channel;                        //!< the channel the device is connected to
+    NetDevice::ReceiveCallback m_rxCallback;             //!< Receive callback
+    NetDevice::PromiscReceiveCallback m_promiscCallback; //!< Promiscuous receive callback
+    Ptr<Node> m_node;                                    //!< Node this netDevice is associated to
+    uint16_t m_mtu;                                      //!< MTU
+    uint32_t m_ifIndex;                                  //!< Interface index
+    Mac48Address m_address;                              //!< MAC address
+    Ptr<ErrorModel> m_receiveErrorModel;                 //!< Receive error model.
  
-  void StartTransmission (void);
+    /**
+     * The trace source fired when the phy layer drops a packet it has received
+     * due to the error model being active.  Although SimpleNetDevicePcap doesn't
+     * really have a Phy model, we choose this trace source name for alignment
+     * with other trace sources.
+     *
+     * @see class CallBackTraceSource
+     */
+    TracedCallback<Ptr<const Packet>> m_phyRxDropTrace;
  
-  void FinishTransmission (Ptr<Packet> packet);
+    /**
+     * The StartTransmission method is used internally to start the process
+     * of sending a packet out on the channel, by scheduling the
+     * FinishTransmission method at a time corresponding to the transmission
+     * delay of the packet.
+     */
+    void StartTransmission();
  
-  bool m_linkUp; 
+    /**
+     * The FinishTransmission method is used internally to finish the process
+     * of sending a packet out on the channel.
+     * @param packet The packet to send on the channel
+     */
+    void FinishTransmission(Ptr<Packet> packet);
  
-  bool m_pointToPointMode;
+    bool m_linkUp; //!< Flag indicating whether or not the link is up
  
-  Ptr<Queue<Packet> > m_queue; 
-  DataRate m_bps; 
-  EventId FinishTransmissionEvent; 
+    /**
+     * Flag indicating whether or not the NetDevice is a Point to Point model.
+     * Enabling this will disable Broadcast and Arp.
+     */
+    bool m_pointToPointMode;
  
-  TracedCallback<> m_linkChangeCallbacks;
+    Ptr<Queue<Packet>> m_queue;      //!< The Queue for outgoing packets.
+    DataRate m_bps;                  //!< The device nominal Data rate. Zero means infinite
+    EventId FinishTransmissionEvent; //!< the Tx Complete event
+ 
+    /**
+     * List of callbacks to fire if the link changes state (up or down).
+     */
+    TracedCallback<> m_linkChangeCallbacks;
 
-  // sniffer trace declaration
-  TracedCallback<Ptr<const Packet>> m_snifferTrace;
+    // sniffer trace declaration
+    TracedCallback<Ptr<const Packet>> m_snifferTrace;
 };
  
 } // namespace ns3
  
-#endif /* SIMPLE_NET_DEVICE_PCAP_H */
+#endif /* SIMPLE_NET_DEVICE_H */
