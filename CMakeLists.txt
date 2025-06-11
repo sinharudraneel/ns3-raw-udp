@@ -46,3 +46,4 @@ add_executable(rawudpnet ${SOURCES})
 
 target_link_libraries(rawudpnet ${NS3_LIBS})
 add_definitions(-DNS3_LOG_ENABLE)
+add_definitions(-DNS3_PYTHON_BINDINGS)

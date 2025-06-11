@@ -17,6 +17,9 @@
 #include "external/popl.hpp"
 #include "ns3/netanim-module.h"
 #include "ns3/mobility-module.h"
+#include <map>
+#include <fstream>
+#include "ns3/drop-tail-queue.h"
 
 /*
  *  UDP Raw Socket Network Topology
@@ -42,12 +45,14 @@ std::vector<T> parse(const std::string &input)
     std::istringstream stream(input);
     std::string value;
     while (stream >> value)
-    {   
+    {
         T val;
-        if(std::is_same<T, int>()) {
+        if (std::is_same<T, int>())
+        {
             val = std::stoi(value);
         }
-        else if (std::is_same<T, double>()) {
+        else if (std::is_same<T, double>())
+        {
             val = std::stod(value);
         }
         output.push_back(val);
@@ -66,6 +71,50 @@ struct runConfig
     Ptr<Node> dst;
 };
 
+static std::map<uint32_t, uint32_t> nodeDropCounts;
+static std::ofstream dropLogFile;
+
+static void PacketDropCallback(uint32_t nodeId, Ptr<const Packet> pkt)
+{
+    nodeDropCounts[nodeId]++;
+    dropLogFile << Simulator::Now().GetSeconds() << "\t" << nodeId << "\t" << nodeDropCounts[nodeId] << std::endl;
+    NS_LOG_UNCOND("Node " << nodeId << " dropped packet at time " << Simulator::Now().GetSeconds() << "s. Total drops at node: " << nodeDropCounts[nodeId]);
+}
+
+static void DropCallback(std::string context, Ptr<const Packet> pkt)
+{
+    // Extract node ID from the trace path context
+    // Context looks like: "/NodeList/2/DeviceList/0/$ns3::CsmaNetDevice/MacTxDrop"
+    size_t nodeStart = context.find("/NodeList/") + 10;
+    size_t nodeEnd = context.find("/", nodeStart);
+    uint32_t nodeId = std::stoi(context.substr(nodeStart, nodeEnd - nodeStart));
+
+    PacketDropCallback(nodeId, pkt);
+}
+
+void SetupDropTrack()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        nodeDropCounts[i] = 0;
+    }
+
+    dropLogFile.open("node-drops.dat");
+    dropLogFile << "# Time(s)\tNodeID\tCumulativeDrops" << std::endl;
+
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        std::ostringstream oss;
+        oss << "/NodeList/" << i << "/DeviceList/*/$ns3::CsmaNetDevice/MacTxDrop";
+        Config::ConnectWithoutContext(oss.str(),
+                                      MakeBoundCallback(&PacketDropCallback, i));
+
+        oss.str("");
+        oss << "/NodeList/" << i << "/DeviceList/*/$ns3::CsmaNetDevice/PhyTxDrop";
+        Config::ConnectWithoutContext(oss.str(),
+                                      MakeBoundCallback(&PacketDropCallback, i));
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -80,19 +129,20 @@ int main(int argc, char *argv[])
     auto simEndOpt = op.add<popl::Value<double>>("e", "simEnd", "double: end time for the simulation", 10.0);
     auto helpOpt = op.add<popl::Switch>("h", "help", "Print this help message");
 
-    
-
-    try {
+    try
+    {
         op.parse(argc, argv);
-        if (helpOpt->is_set()) {
+        if (helpOpt->is_set())
+        {
             std::cout << op << std::endl;
             return -1;
         }
     }
-    catch (const std::exception &e) {
+    catch (const std::exception &e)
+    {
         std::cerr << "Error parsing arguments: " << e.what() << std::endl;
         std::cout << op << std::endl;
-        return 1; 
+        return 1;
     }
 
     std::vector<int> initiatorVec = parse<int>(initiatorOpt->value());
@@ -103,41 +153,55 @@ int main(int argc, char *argv[])
     std::vector<double> intervalVec = parse<double>(intervalOpt->value());
 
     int numConfigs = initiatorVec.size();
-    if (targetVec.size() != numConfigs) {
+    if (targetVec.size() != numConfigs)
+    {
         std::cout << "ERROR: Make sure the number of targets match the number of initiators" << std::endl;
         return 1;
     }
     std::unordered_set allowed = {0, 1, 4, 5};
-    for (int i = 0; i < numConfigs; i++) {
-        for (int num : initiatorVec) {
-            if (allowed.find(num) == allowed.end()) {
+    for (int i = 0; i < numConfigs; i++)
+    {
+        for (int num : initiatorVec)
+        {
+            if (allowed.find(num) == allowed.end())
+            {
                 std::cout << "ERROR: Only 0, 1, 4, 5 can be initiators or targets" << std::endl;
             }
         }
-        for (int num : targetVec) {
-            if (allowed.find(num) == allowed.end()) {
+        for (int num : targetVec)
+        {
+            if (allowed.find(num) == allowed.end())
+            {
                 std::cout << "ERROR: Only 0, 1, 4, 5 can be initiators or targets" << std::endl;
                 return 1;
             }
         }
     }
-    if (startVec.size() != numConfigs) {
-        for (int i = 0; i < (numConfigs - startVec.size()); i++) {
+    if (startVec.size() != numConfigs)
+    {
+        for (int i = 0; i < (numConfigs - startVec.size()); i++)
+        {
             startVec.push_back(1.0);
         }
     }
-    if (numPktsVec.size() != numConfigs) {
-        for (int i = 0; i < (numConfigs - numPktsVec.size()); i++) {
+    if (numPktsVec.size() != numConfigs)
+    {
+        for (int i = 0; i < (numConfigs - numPktsVec.size()); i++)
+        {
             numPktsVec.push_back(5);
         }
     }
-    if (pktSizeVec.size() != numConfigs) {
-        for (int i = 0; i < (numConfigs - pktSizeVec.size()); i++) {
+    if (pktSizeVec.size() != numConfigs)
+    {
+        for (int i = 0; i < (numConfigs - pktSizeVec.size()); i++)
+        {
             pktSizeVec.push_back(1024);
         }
     }
-    if (intervalVec.size() != numConfigs) {
-        for (int i = 0; i < (numConfigs - intervalVec.size()); i++) {
+    if (intervalVec.size() != numConfigs)
+    {
+        for (int i = 0; i < (numConfigs - intervalVec.size()); i++)
+        {
             intervalVec.push_back(1.0);
         }
     }
@@ -149,7 +213,7 @@ int main(int argc, char *argv[])
     NodeContainer nodes, endpoints, bridges;
     nodes.Create(6);
 
-    //GlobalValue::Bind("SimulatorImplementationType", ns3::StringValue("ns3::VisualSimulatorImpl"));
+    // GlobalValue::Bind("SimulatorImplementationType", ns3::StringValue("ns3::VisualSimulatorImpl"));
     MobilityHelper mobility;
     mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
     mobility.Install(nodes);
@@ -191,6 +255,7 @@ int main(int argc, char *argv[])
     CsmaHelper csmaSwitch1;
     csmaSwitch1.SetChannelAttribute("DataRate", StringValue("10Mbps"));
     csmaSwitch1.SetChannelAttribute("Delay", TimeValue(MilliSeconds(3)));
+    csmaSwitch1.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize("100p")));
     NetDeviceContainer n0n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(0), nodes.Get(2)));
     NetDeviceContainer n1n2 = csmaSwitch1.Install(NodeContainer(nodes.Get(1), nodes.Get(2)));
 
@@ -199,6 +264,7 @@ int main(int argc, char *argv[])
     CsmaHelper csmaSwitch2;
     csmaSwitch2.SetChannelAttribute("DataRate", StringValue("10Mbps"));
     csmaSwitch2.SetChannelAttribute("Delay", TimeValue(MilliSeconds(5)));
+    csmaSwitch2.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize("100p")));
     NetDeviceContainer n3n4 = csmaSwitch2.Install(NodeContainer(nodes.Get(3), nodes.Get(4)));
     NetDeviceContainer n3n5 = csmaSwitch2.Install(NodeContainer(nodes.Get(3), nodes.Get(5)));
 
@@ -207,6 +273,7 @@ int main(int argc, char *argv[])
     CsmaHelper csmaInter;
     csmaInter.SetChannelAttribute("DataRate", StringValue("1.5Mbps"));
     csmaInter.SetChannelAttribute("Delay", StringValue("15ms"));
+    csmaInter.SetQueue("ns3::DropTailQueue", "MaxSize", QueueSizeValue(QueueSize("100p")));
     NetDeviceContainer interDevices = csmaInter.Install(NodeContainer(nodes.Get(2), nodes.Get(3)));
 
     // Set up ports for Switch 1 (n2)
@@ -242,6 +309,9 @@ int main(int argc, char *argv[])
     interfaces.Add(ipv4.Assign(n3n4.Get(1)));
     interfaces.Add(ipv4.Assign(n3n5.Get(1)));
 
+
+    SetupDropTrack();
+
     // Set up sending and receiving applicataions for each channel
     // activated by the user.
 
@@ -267,7 +337,7 @@ int main(int argc, char *argv[])
     csmaSwitch1.EnablePcap("endpoint-n1", n1n2.Get(0));
     csmaSwitch2.EnablePcap("endpoint-n4", n3n4.Get(1));
     csmaSwitch2.EnablePcap("endpoint-n5", n3n5.Get(1));
-    
+
     AnimationInterface anim("simulation.xml");
     anim.SetConstantPosition(nodes.Get(0), 0.0, 0.0);
     anim.SetConstantPosition(nodes.Get(1), 0.0, 10.0);
@@ -276,7 +346,7 @@ int main(int argc, char *argv[])
     anim.SetConstantPosition(nodes.Get(4), 10.0, 0.0);
     anim.SetConstantPosition(nodes.Get(5), 10.0, 10.0);
     anim.EnablePacketMetadata(true);
-    
+
     Simulator::Run();
     Simulator::Destroy();
 
