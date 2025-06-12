@@ -180,6 +180,16 @@ SimpleNetDevicePcap::GetTypeId()
                           "Trace source for packets passing through the device",
                           MakeTraceSourceAccessor(&SimpleNetDevicePcap::m_snifferTrace),
                           "ns3::Packet::TracedCallback") // Edit 1: Add Trace Source for Packet Sniffer
+            .AddTraceSource("MacTxDrop",
+                            "Trace source indicating a packet has been "
+                            "dropped by the device before transmission",
+                            MakeTraceSourceAccessor(&SimpleNetDevicePcap::m_macTxDropTrace),
+                            "ns3::Packet::TracedCallback")
+            .AddTraceSource("PhyTxDrop",
+                            "Trace source indicating a packet has been "
+                            "dropped by the device during transmission",
+                            MakeTraceSourceAccessor(&SimpleNetDevicePcap::m_phyTxDropTrace),
+                            "ns3::Packet::TracedCallback")
             .AddAttribute("ReceiveErrorModel",
                           "The receiver error model used to simulate packet loss",
                           PointerValue(),
@@ -463,6 +473,7 @@ SimpleNetDevicePcap::SendFrom(Ptr<Packet> p,
         }
         return true;
     }
+    m_macTxDropTrace(p);
  
     return false;
 }

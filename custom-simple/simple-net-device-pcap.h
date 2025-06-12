@@ -177,6 +177,11 @@ class SimpleNetDevicePcap : public NetDevice
 
     // sniffer trace declaration
     TracedCallback<Ptr<const Packet>> m_snifferTrace;
+    
+    // Drop Traces
+    TracedCallback<Ptr<const Packet>> m_macTxDropTrace;
+    TracedCallback<Ptr<const Packet>> m_phyTxDropTrace;
+
 };
  
 } // namespace ns3

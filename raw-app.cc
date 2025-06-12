@@ -17,56 +17,51 @@ TypeId RawApp::GetTypeId()
 // Constructor for RawApp, sets socket, running, size, count and sent to default values
 RawApp::RawApp() 
 {
-    m_socket = nullptr;
     m_running = false;
     m_pktSize = 0;
     m_pktCount = 0;
     m_sent = 0;
     m_PSN = 0;
+    m_byteMode = false;
+    m_byteArray = nullptr;
 }
 
 // Destructor for RawApp, sets socket to nullptr
 RawApp::~RawApp() 
 {
-    m_socket = nullptr;
 }
 
 // Sets up all arguments for app
-void RawApp::Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode) 
+void RawApp::Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteMode, std::shared_ptr<std::vector<uint8_t>> byteArray) 
 {
     m_pktSize = pktSize;
     m_pktCount = pktCount;
     m_interval = interval;
     m_isSender = isSender;
     m_destNode = destNode;
+    m_byteMode = byteMode;
+    m_byteArray = byteArray;
 }
 
 // Internally called method to start RawApp application
 void RawApp::StartApplication()
 {
     m_running = true;
-    // Create Raw Socket
-    m_socket = Socket::CreateSocket(GetNode(), PacketSocketFactory::GetTypeId());
+    
     Ptr<NetDevice> device = GetNode()->GetDevice(1); // CSMA device resides at index 1 instead of 0, 0 occupied by Bridge Device (why?)
-   
-    PacketSocketAddress localAddress;
-    localAddress.SetSingleDevice(device->GetIfIndex());
-    localAddress.SetProtocol(0x0800);
-
-    m_socket->Bind(localAddress);
 
     if (!m_isSender)
     {
-        m_socket->SetRecvCallback(MakeCallback(&RawApp::ReceivePacket, this));
+        device->SetReceiveCallback(MakeCallback(&RawApp::ReceivePacket, this));
     }
     else
     {
-        PacketSocketAddress socketAddress;
-        socketAddress.SetSingleDevice(device->GetIfIndex());
-        socketAddress.SetPhysicalAddress(Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()));
-        socketAddress.SetProtocol(0x0800);
-        m_socket->Connect(socketAddress);
-        RawApp::SendPacket();
+        if (m_byteMode) {
+            RawApp::SendByteArray(m_byteArray);
+        }
+        else {
+            RawApp::SendPacket();
+        }
     }
 }
 
@@ -77,10 +72,38 @@ void RawApp::StopApplication()
     if (m_sendEvent.IsPending()) {
         Simulator::Cancel(m_sendEvent);
     }
-    // Close Socket
-    if (m_socket) 
-    {
-        m_socket->Close();   
+}
+
+void RawApp::SendByteArray(std::shared_ptr<std::vector<uint8_t>> payload) {
+    if (m_running) {
+        if ((payload->size() <= 14)) {
+            NS_LOG_UNCOND("ERROR: INVALID HEADER LESS THAN 14 BYTES");
+        }
+        uint8_t destMacBytes[6];
+        printf("Dest MAC: ");
+        for (int i = 0; i < 6; i++) {
+            destMacBytes[i] = (*payload)[i + 6];
+            printf("%02x ", destMacBytes[i]);
+        }
+        printf("\n");
+        Mac48Address destMac;
+        destMac.CopyFrom(destMacBytes);
+
+        uint16_t proto = (uint16_t)(((*payload)[12] << 8) | (*payload)[13]);
+        printf("Protocol: %02x\n", proto);
+
+        uint8_t* payloadraw = payload->data();
+        payloadraw = payloadraw + 14;
+
+        Ptr<Packet> pkt = Create<Packet>(payloadraw, (payload->size()));
+
+        Ptr<NetDevice> device = GetNode()->GetDevice(1);
+        if (!device->Send(pkt, destMac, proto)) {
+            NS_LOG_UNCOND("Error in Sending");
+            return;
+        }
+
+        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " sent Packet " << m_sent << " at time " << Simulator::Now().GetSeconds() << "s");
     }
 }
 
@@ -94,6 +117,7 @@ void RawApp::SendPacket()
         // EthernetHeader ethHeader;
         // ethHeader.SetSource(Mac48Address::ConvertFrom(GetNode()->GetDevice(1)->GetAddress()));
         // ethHeader.SetDestination(Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()));
+        // ethHeader.SetLengthType(0x0800);
 
 
         Ipv4Header ipheader;
@@ -113,7 +137,8 @@ void RawApp::SendPacket()
         pkt->AddHeader(ipheader);
         //pkt->AddHeader(ethHeader);
 
-        if (!m_socket->Send(pkt)) {
+        Ptr<NetDevice> device = GetNode()->GetDevice(1);
+        if (!device->Send(pkt, Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()), 0x0800)) {
             NS_LOG_UNCOND("Error in Sending");
             return;
         }
@@ -131,13 +156,11 @@ void RawApp::SendPacket()
     }
 }
 
-void RawApp::ReceivePacket(Ptr<Socket> socket)
+bool RawApp::ReceivePacket(Ptr<NetDevice> device, Ptr<const Packet> pkt, uint16_t protocol, const Address& sender)
 {
-    Ptr<Packet> pkt;
-    while ((pkt = socket->Recv()))
-    {
-        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " received packet " << m_PSN << " of size " << pkt->GetSize() << " at time " << Simulator::Now().GetSeconds() << "s");
-        m_PSN++; // Only local to one channel, need to implement global packet counting 
-    }
+    NS_LOG_UNCOND("Node " << GetNode()->GetId() << " received packet " << m_PSN << " of size " << pkt->GetSize() << " at time " << Simulator::Now().GetSeconds() << "s");
+    m_PSN++; // Only local to one channel, need to implement global packet counting
+    return true; 
+    
 }
 }
