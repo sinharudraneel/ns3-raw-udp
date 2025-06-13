@@ -146,9 +146,6 @@ int main(int argc, char *argv[])
     auto simEndOpt = op.add<popl::Value<double>>("e", "simEnd", "double: end time for the simulation", 10.0);
     auto helpOpt = op.add<popl::Switch>("h", "help", "Print this help message");
     auto rawEnableOpt = op.add<popl::Value<bool>>("y", "enableByte", "Bool: Turn on byte array sending", false);
-    auto rawPacketOpt = op.add<popl::Value<std::string>>("r", "raw", "String of space separated bytes to be sent", "00 00 00 00 00 00 00 00 00 00 00 06 08 00 45 00 00 4E 00 00 00 00 40 "\
-                                                                                                                    "11 66 9C 0A 00 00 01 0A 00 00 03 1F 90 1F 90 00 3A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "\
-                                                                                                                    "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00");
 
     
 
@@ -314,62 +311,22 @@ int main(int argc, char *argv[])
     // Set up sending and receiving applicataions for each channel
     // activated by the user.
 
-    std::map<Mac48Address, Ptr<Node>> macNodeMap;
+    
+    for (int i = 0; i < numConfigs; i++)
+    {
+        Ptr<RawApp> rcvAppLoop = CreateObject<RawApp>();
+        rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src, false);
+        configs[i].dst->AddApplication(rcvAppLoop);
+        rcvAppLoop->SetStartTime(Seconds(configs[i].start));
+        rcvAppLoop->SetStopTime(Seconds(simEndOpt->value()));
 
-    for (int i = 0; i < nodes.GetN(); i++) {
-        Ptr<Node> node = nodes.Get(i);
-        macNodeMap[Mac48Address::ConvertFrom(node->GetDevice(0)->GetAddress())] = node;
+        Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
+        sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst, rawEnableOpt->value());
+        configs[i].src->AddApplication(sndAppLoop);
+        sndAppLoop->SetStartTime(Seconds(configs[i].start));
+        sndAppLoop->SetStopTime(Seconds(simEndOpt->value()));
     }
-
-    if (rawEnableOpt->value()) {
-        std::vector<uint8_t> byteArray = StringToByteArray(rawPacketOpt->value());
-        uint8_t srcMacBytes[6];
-        printf("Src MAC: ");
-        for (int i = 0; i < 6; i++) {
-            srcMacBytes[i] = byteArray[i];
-            printf("%02x ", srcMacBytes[i]);
-        }
-        printf("\n");
-        Mac48Address srcMac;
-        srcMac.CopyFrom(srcMacBytes);
-
-        auto findMac = macNodeMap.find(srcMac);
-        if (findMac == macNodeMap.end()) {
-            NS_LOG_ERROR("Mac Address Invalid");
-            return 1;
-        }
-        Ptr<Node> srcNode = findMac->second;
-        Ptr<RawApp> sndApp = CreateObject<RawApp>();
-        std::shared_ptr<std::vector<uint8_t>> byteArrayPtr = std::make_shared<std::vector<uint8_t>>(byteArray);
-        sndApp->Setup(0, 0, Seconds(0), true, nullptr, true, byteArrayPtr); 
-        srcNode->AddApplication(sndApp);
-        sndApp->SetStartTime(Seconds(1));
-        sndApp->SetStopTime(Seconds(simEndOpt->value()));
-
-        for (int i = 0; i < nodes.GetN(); i++) {
-            Ptr<RawApp> rcvApp = CreateObject<RawApp>();
-            rcvApp->Setup(0,0,Seconds(0), false, nullptr, true, nullptr);
-            nodes.Get(i)->AddApplication(rcvApp);
-            rcvApp->SetStartTime(Seconds(1));
-            rcvApp->SetStopTime(Seconds(simEndOpt->value()));
-        }
-    }
-    else {
-        for (int i = 0; i < numConfigs; i++)
-        {
-            Ptr<RawApp> rcvAppLoop = CreateObject<RawApp>();
-            rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src, false, nullptr);
-            configs[i].dst->AddApplication(rcvAppLoop);
-            rcvAppLoop->SetStartTime(Seconds(configs[i].start));
-            rcvAppLoop->SetStopTime(Seconds(simEndOpt->value()));
-
-            Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
-            sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst, false, nullptr);
-            configs[i].src->AddApplication(sndAppLoop);
-            sndAppLoop->SetStartTime(Seconds(configs[i].start));
-            sndAppLoop->SetStopTime(Seconds(simEndOpt->value()));
-        }
-    }
+    
 
     // Enable packet capture for each endpoint.
     

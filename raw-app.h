@@ -17,7 +17,7 @@ class RawApp : public Application {
         ~RawApp() override;
 
         // Setup necessary parameters for UDP packet transmission over a raw socket
-        void Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteMode, std::shared_ptr<std::vector<uint8_t>> byteArray);
+        void Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteModes);
 
         
     private:
@@ -26,7 +26,6 @@ class RawApp : public Application {
 
         // Method used by sending application
         void SendPacket();
-        void SendByteArray(std::shared_ptr<std::vector<uint8_t>> payload);
         // Receiver method
         bool ReceivePacket(Ptr<NetDevice> device, Ptr<const Packet> pkt, uint16_t protocol, const Address& sender);
 
@@ -40,7 +39,6 @@ class RawApp : public Application {
         Ptr<Node> m_destNode;   // Destination node for MAC Address
         int m_PSN;              // Packet tracking num
         bool m_byteMode;         // Byte Array Sending Mode
-        std::shared_ptr<std::vector<uint8_t>> m_byteArray;    // Byte Array to Send
 
 };
 

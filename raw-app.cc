@@ -23,7 +23,6 @@ RawApp::RawApp()
     m_sent = 0;
     m_PSN = 0;
     m_byteMode = false;
-    m_byteArray = nullptr;
 }
 
 // Destructor for RawApp, sets socket to nullptr
@@ -32,7 +31,7 @@ RawApp::~RawApp()
 }
 
 // Sets up all arguments for app
-void RawApp::Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteMode, std::shared_ptr<std::vector<uint8_t>> byteArray) 
+void RawApp::Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteMode) 
 {
     m_pktSize = pktSize;
     m_pktCount = pktCount;
@@ -40,7 +39,6 @@ void RawApp::Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSe
     m_isSender = isSender;
     m_destNode = destNode;
     m_byteMode = byteMode;
-    m_byteArray = byteArray;
 }
 
 // Internally called method to start RawApp application
@@ -56,12 +54,8 @@ void RawApp::StartApplication()
     }
     else
     {
-        if (m_byteMode) {
-            RawApp::SendByteArray(m_byteArray);
-        }
-        else {
-            RawApp::SendPacket();
-        }
+        RawApp::SendPacket();
+        
     }
 }
 
@@ -74,73 +68,72 @@ void RawApp::StopApplication()
     }
 }
 
-void RawApp::SendByteArray(std::shared_ptr<std::vector<uint8_t>> payload) {
-    if (m_running) {
-        if ((payload->size() <= 14)) {
-            NS_LOG_UNCOND("ERROR: INVALID HEADER LESS THAN 14 BYTES");
-        }
-        uint8_t destMacBytes[6];
-        printf("Dest MAC: ");
-        for (int i = 0; i < 6; i++) {
-            destMacBytes[i] = (*payload)[i + 6];
-            printf("%02x ", destMacBytes[i]);
-        }
-        printf("\n");
-        Mac48Address destMac;
-        destMac.CopyFrom(destMacBytes);
-
-        uint16_t proto = (uint16_t)(((*payload)[12] << 8) | (*payload)[13]);
-        printf("Protocol: %02x\n", proto);
-
-        uint8_t* payloadraw = payload->data();
-        payloadraw = payloadraw + 14;
-
-        Ptr<Packet> pkt = Create<Packet>(payloadraw, (payload->size()));
-
-        Ptr<NetDevice> device = GetNode()->GetDevice(1);
-        if (!device->Send(pkt, destMac, proto)) {
-            NS_LOG_UNCOND("Error in Sending");
-            return;
-        }
-
-        NS_LOG_UNCOND("Node " << GetNode()->GetId() << " sent Packet " << m_sent << " at time " << Simulator::Now().GetSeconds() << "s");
-    }
-}
-
 void RawApp::SendPacket() 
 {
     if (m_running && m_pktCount && m_sent < m_pktCount) 
     {   
         //LogComponentEnable("RawApp", LOG_LEVEL_DEBUG);
-        Ptr<Packet> pkt = Create<Packet>(m_pktSize);
 
-        // EthernetHeader ethHeader;
-        // ethHeader.SetSource(Mac48Address::ConvertFrom(GetNode()->GetDevice(1)->GetAddress()));
-        // ethHeader.SetDestination(Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()));
-        // ethHeader.SetLengthType(0x0800);
+        Ptr<Packet> pkt;
+        if (!m_byteMode) {
+            pkt = Create<Packet>(m_pktSize);
 
-
-        Ipv4Header ipheader;
-        ipheader.SetSource(GetNode()->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal());
-        ipheader.SetDestination(m_destNode->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
-        ipheader.SetProtocol(17);
-        ipheader.SetPayloadSize(m_pktSize + 8);
-        ipheader.SetTtl(64);
-        ipheader.EnableChecksum();
+            // EthernetHeader ethHeader;
+            // ethHeader.SetSource(Mac48Address::ConvertFrom(GetNode()->GetDevice(1)->GetAddress()));
+            // ethHeader.SetDestination(Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()));
+            // ethHeader.SetLengthType(0x0800);
 
 
-        // Must manually add UDP header, set both src and dest ports to 8080
-        UdpHeader udpheader;
-        udpheader.SetSourcePort(8080);
-        udpheader.SetDestinationPort(8080);
-        pkt->AddHeader(udpheader);
-        pkt->AddHeader(ipheader);
-        //pkt->AddHeader(ethHeader);
+            Ipv4Header ipheader;
+            ipheader.SetSource(GetNode()->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal());
+            ipheader.SetDestination(m_destNode->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+            ipheader.SetProtocol(17);
+            ipheader.SetPayloadSize(m_pktSize + 8);
+            ipheader.SetTtl(64);
+            ipheader.EnableChecksum();
 
-        Ptr<NetDevice> device = GetNode()->GetDevice(1);
-        if (!device->Send(pkt, Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()), 0x0800)) {
-            NS_LOG_UNCOND("Error in Sending");
-            return;
+
+            // Must manually add UDP header, set both src and dest ports to 8080
+            UdpHeader udpheader;
+            udpheader.SetSourcePort(8080);
+            udpheader.SetDestinationPort(8080);
+            pkt->AddHeader(udpheader);
+            pkt->AddHeader(ipheader);
+            //pkt->AddHeader(ethHeader);
+
+            Ptr<NetDevice> device = GetNode()->GetDevice(1);
+            if (!device->Send(pkt, Mac48Address::ConvertFrom(m_destNode->GetDevice(1)->GetAddress()), 0x0800)) {
+                NS_LOG_UNCOND("Error in Sending");
+                return;
+            }
+        }
+        else 
+        {
+            uint8_t pktBytes[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x08, 0x00, 0x45, 0x00, 0x00, 0x4E, 0x00, 0x00, 0x00, 0x00, 0x40, 0x11, 0x66, \
+                0x9C, 0x0A, 0x00, 0x00, 0x01, 0x0A, 0x00, 0x00, 0x03, 0x1F, 0x90, 0x1F, 0x90, 0x00, 0x3A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xFF, 0xFF, 0xFF};
+
+            uint8_t srcBytes[6];
+            uint8_t destBytes[6];
+            uint16_t protocol = (uint16_t)((pktBytes[12] << 8) | pktBytes[13]);
+            for (int i = 0; i < 6; i++) {
+                srcBytes[i] = pktBytes[i];
+                destBytes[i] = pktBytes[i + 6];
+            }
+            Mac48Address srcAddr;
+            srcAddr.CopyFrom(srcBytes);
+            Mac48Address destAddr;
+            destAddr.CopyFrom(destBytes);
+
+            pkt = Create<Packet>(pktBytes, 92);
+            pkt = pkt->CreateFragment(14, 78);
+
+            Ptr<NetDevice> device = GetNode()->GetDevice(1);
+            if (!device->SendFrom(pkt, srcAddr, destAddr, protocol)) {
+                NS_LOG_UNCOND("Error in Sending");
+                return;
+            }
         }
 
         NS_LOG_UNCOND("Node " << GetNode()->GetId() << " sent Packet " << m_sent << " at time " << Simulator::Now().GetSeconds() << "s");
