@@ -17,7 +17,7 @@ class RawApp : public Application {
         ~RawApp() override;
 
         // Setup necessary parameters for UDP packet transmission over a raw socket
-        void Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode);
+        void Setup(uint32_t pktSize, uint32_t pktCount, Time interval, bool isSender, Ptr<Node> destNode, bool byteTest);
 
         
     private:
@@ -27,7 +27,7 @@ class RawApp : public Application {
         // Method used by sending application
         void SendPacket();
         // Receiver method
-        void ReceivePacket(Ptr<Socket> socket);
+        bool ReceivePacket(Ptr<NetDevice> device, Ptr<const Packet> pkt, uint16_t protocol, const Address& sender);
 
         Ptr<Socket> m_socket;   // Socket for RawUDPApp
         uint32_t m_pktSize;     // Size of each packet to be sent
@@ -39,7 +39,7 @@ class RawApp : public Application {
         bool m_isSender;        // Identify sender from receiver
         Ptr<Node> m_destNode;   // Destination node for MAC Address
         int m_PSN;              // Packet tracking num
-
+        bool m_byteTest;
 };
 
 }

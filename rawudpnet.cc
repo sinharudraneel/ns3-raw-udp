@@ -116,6 +116,18 @@ void SetupDropTrack()
     }
 }
 
+std::vector<uint8_t> StringToByteArray(const std::string& input) {
+    std::vector<uint8_t> byteArray;
+    std::istringstream stream(input);
+
+    unsigned int byte;
+    while (stream >> std::hex >> byte) {
+        byteArray.push_back(static_cast<uint8_t>(byte));
+    }
+
+    return byteArray;
+}
+
 int main(int argc, char *argv[])
 {
     auto op = popl::OptionParser("Allowed Options");
@@ -128,6 +140,7 @@ int main(int argc, char *argv[])
     auto intervalOpt = op.add<popl::Value<std::string>>("l", "interval", "String (double): Space separated floats indicating the interval between packet sends (s)", "1.0");
     auto simEndOpt = op.add<popl::Value<double>>("e", "simEnd", "double: end time for the simulation", 10.0);
     auto helpOpt = op.add<popl::Switch>("h", "help", "Print this help message");
+    auto rawEnableOpt = op.add<popl::Value<bool>>("y", "enableByte", "Bool: Turn on byte array sending", false);
 
     try
     {
@@ -314,18 +327,25 @@ int main(int argc, char *argv[])
 
     // Set up sending and receiving applicataions for each channel
     // activated by the user.
+    ns3::PacketMetadata::Enable();
 
     for (int i = 0; i < numConfigs; i++)
     {
 
         Ptr<RawApp> rcvAppLoop = CreateObject<RawApp>();
-        rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src);
+        rcvAppLoop->Setup(configs[i].pktSize, 0, Seconds(0), false, configs[i].src, false);
         configs[i].dst->AddApplication(rcvAppLoop);
         rcvAppLoop->SetStartTime(Seconds(configs[i].start));
         rcvAppLoop->SetStopTime(Seconds(simEndOpt->value()));
 
         Ptr<RawApp> sndAppLoop = CreateObject<RawApp>();
-        sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst);
+        if (!rawEnableOpt->value()) {
+            sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst, false);
+        }
+        else 
+        {
+            sndAppLoop->Setup(configs[i].pktSize, configs[i].numPkts, Seconds(configs[i].interval), true, configs[i].dst, true);
+        }
         configs[i].src->AddApplication(sndAppLoop);
         sndAppLoop->SetStartTime(Seconds(configs[i].start));
         sndAppLoop->SetStopTime(Seconds(simEndOpt->value()));
